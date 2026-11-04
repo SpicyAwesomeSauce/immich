@@ -43,9 +43,12 @@ jobs:
 
       - name: Package IPA
         run: |
+          APP=$(ls -d mobile/build/ios/iphoneos/*.app | head -1)
+          echo "Packaging $APP"
           mkdir Payload
-          cp -r mobile/build/ios/iphoneos/Runner.app Payload/
-          zip -r Immich-v3.3.6.ipa Payload
+          cp -r "$APP" Payload/
+          zip -qry Immich-v3.3.6.ipa Payload
+          ls -lh Immich-v3.3.6.ipa
 
       - uses: actions/upload-artifact@v4
         with:
