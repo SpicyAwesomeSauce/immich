@@ -1,6 +1,9 @@
 name: Build unsigned iOS IPA
 on: workflow_dispatch
 
+env:
+  MISE_EXPERIMENTAL: "1"
+
 jobs:
   build:
     runs-on: macos-26
@@ -11,19 +14,22 @@ jobs:
 
       - name: Use newest installed Xcode
         run: |
-          ls -d /Applications/Xcode_*.app | sort -V
           NEWEST=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
           sudo xcode-select -s "$NEWEST/Contents/Developer"
           xcodebuild -version
 
-      - name: Setup Mise
-        uses: immich-app/devtools/actions/use-mise@caac7f7e4298458a14238959504f411fc6cc7f06
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          working_directory: ./mobile
+      - name: Install mise and tools (unlocked)
+        run: |
+          curl -fsSL https://mise.run | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
+          export PATH="$HOME/.local/bin:$PATH"
+          mise trust --all || true
+          mise install
+          cd mobile && mise install
 
-      - name: Rust iOS targets
-        run: rustup target add aarch64-apple-ios
+      - name: Rust iOS target
+        run: rustup target add aarch64-apple-ios || true
 
       - name: Install dependencies
         run: mise //mobile:install:ci
@@ -33,7 +39,7 @@ jobs:
 
       - name: Build (no codesign)
         working-directory: ./mobile
-        run: flutter build ios --release --no-codesign
+        run: mise x -- flutter build ios --release --no-codesign
 
       - name: Package IPA
         run: |
